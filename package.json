@@ -1,0 +1,31 @@
+{
+  "name": "personal_site",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "TODO",
+    "devStart": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brandonsimpson21/personal_site.git"
+  },
+  "author": "Brandon Simpson",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/brandonsimpson21/personal_site/issues"
+  },
+  "homepage": "https://github.com/brandonsimpson21/personal_site#readme",
+  "dependencies": {
+    "bootstrap": "^4.5.3",
+    "dotenv": "^8.2.0",
+    "ejs": "^3.1.5",
+    "express": "^4.17.1",
+    "mongoose": "^5.11.8",
+    "yarn": "^1.22.10"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.6"
+  }
+}
