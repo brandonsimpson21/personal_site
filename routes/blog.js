@@ -13,7 +13,7 @@ router.get('/', (req, res) => {
             date: new Date(),
             description: "This is a description"
         }]
-    res.render('posts', {posts: posts})
+    res.render('blog',  {posts: posts, page:'Blog', menuId:'Blog'})
 })
 
 module.exports = router

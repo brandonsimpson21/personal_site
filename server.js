@@ -5,17 +5,14 @@ const mongoose = require('mongoose')
 
 const app = express()
 
-const postsRouter = require('./routes/posts')
+const blogRouter = require('./routes/blog')
+const indexRouter = require('./routes/index')
 
 app.set('view engine', 'ejs')
 
-app.get('/', (req, res) => {
-    res.render('index')
-})
-
-app.use('/posts', postsRouter)
-console.log('listening on port ' + process.env.PORT)
-
+app.use('/', indexRouter)
+app.use('/blog', blogRouter)
 
 app.listen(process.env.PORT)
+console.log('listening on port ' + process.env.PORT)
 
