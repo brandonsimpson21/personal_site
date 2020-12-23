@@ -13,7 +13,7 @@ app.set('view engine', 'ejs')
 app.use('/', indexRouter)
 app.use('/blog', blogRouter)
 
-app.use(express.static(path.join(__dirname, 'public/Images')));
+app.use(express.static(path.join(__dirname, 'public')))
 
 app.listen(process.env.PORT)
 
