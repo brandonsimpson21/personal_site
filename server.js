@@ -5,13 +5,13 @@ const path = require('path')
 
 const app = express()
 
-const blogRouter = require('./routes/blog')
+const postsRouter = require('./routes/posts')
 const indexRouter = require('./routes/index')
 
 app.set('view engine', 'ejs')
 
 app.use('/', indexRouter)
-app.use('/blog', blogRouter)
+app.use('/posts', postsRouter)
 
 app.use(express.static(path.join(__dirname, 'public')))
 
