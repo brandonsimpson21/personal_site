@@ -2,15 +2,15 @@ const express = require('express')
 require('dotenv').config()
 const mongoose = require('mongoose')
 const path = require('path')
-
-const app = express()
-
 const posts = require('./routes/posts')
 const indexRouter = require('./routes/index')
+
+const app = express()
 
 app.set('view engine', 'ejs')
 
 app.use('/', indexRouter)
+
 app.use('/posts', posts)
 
 app.use(express.static(path.join(__dirname, 'public')))

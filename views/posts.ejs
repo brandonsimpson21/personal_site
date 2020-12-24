@@ -10,25 +10,18 @@
     <div class="container align-content-center">
         <center>
                 <h1 class="mb-3">
-                    Blog Posts
+                    Posts
                 </h1>
         </center>
         </div>
         <% posts.forEach((post) => {%>
-            <div class="card mt-4">
-               <div class="card-body">
-                   <h4 class="card-title">
-                       <%=post.title%>
-                   </h4>
-
-                   <div class="card-subtitle text-muted mb-2">
-                        <%=post.date.toLocaleDateString()%>
-                   </div>
-
-                   <div class="card-text mb-2">
-                       <%=post.description%>
-                   </div>
-               </div>
+            <div class="card mb-4 w-25 h-25 center" style="width: 18rem;">
+                <img class="card-img-top" src="<%-post.image%>" alt="Card image cap">
+                <div class="card-body">
+                    <h5 class="card-title"> <%post.title%></h5>
+                    <h6 class="card-subtitle mb-2 text-muted"><%=post.date%></h6>
+                    <p class="card-text"><%= post.description%></p>
+                </div>
             </div>
         <% }) %>
 
