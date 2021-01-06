@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
 })
 
 router.get("/:article", (req, res) => {
-    res.render("../posts/" + req.params.article)
+    res.render("../posts/" + req.params.article + '/' + req.params.article) //todo change when in db
 
 });
 

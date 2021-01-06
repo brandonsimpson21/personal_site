@@ -7,6 +7,7 @@
 
 <body>
     <%- include('partials/menu.ejs') %>
+
     <div class="container align-content-center">
         <center>
                 <h1 class="mb-3">
@@ -14,18 +15,37 @@
                 </h1>
         </center>
         </div>
-        <% posts.forEach((post) => {%>
-            <div class="card mb-4 w-25 h-25 center" style="width: 18rem;">
-                <img class="card-img-top" src="<%-post.image%>" alt="Card image cap">
-                <div class="card-body">
-                    <h5 class="card-title"> <%post.title%></h5>
-                    <h6 class="card-subtitle mb-2 text-muted"><%=post.date%></h6>
-                    <p class="card-text"><%= post.description%></p>
-                </div>
-            </div>
-        <% }) %>
+        <div class="mx-auto">
+        <%const numPosts = posts.length
+            const numRows = Math.ceil(numPosts / 3)
+            const articlesOnLastRow = numPosts % 3
+            var count = 0
+            for (i = 0; i < numRows+1; i++){
+                if (i == numRows) {
+                        const lastPosts = posts.slice(count, numPosts)%>
+                        <div class="container">
+                            <div class="row">
+                                <%lastPosts.forEach((post) => {%>
+                                    <div class="col-sm">
+                                        <div class="card" style="width: 18rem;" >
+                                            <a href="<% "/posts/" + post.article%>">
+                                                <img class="card-img-top" src="<%-post.image%>" alt="Card image cap">
+                                            </a>
+                                            <div class="card-body">
+                                                <h5 class="card-title"> <%post.title%></h5>
+                                                <h6 class="card-subtitle mb-2 text-muted"><%=post.date%></h6>
+                                                <p class="card-text"><%= post.description%></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                       <% }) %>
+                        </div>
+                        </div>
+                                <%} %>
 
-    </div>
+        <% } %>
+        </div>
+
 
 </body>
 
