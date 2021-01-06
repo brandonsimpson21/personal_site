@@ -26,9 +26,9 @@
                         <div class="container">
                             <div class="row">
                                 <%lastPosts.forEach((post) => {%>
-                                    <div class="col-sm">
-                                        <div class="card" style="width: 18rem;" >
-                                            <a href="<% "/posts/" + post.article%>">
+                                    <div class="col-auto">
+                                        <div class="card post" style="width: 20rem;" >
+                                            <a href="<%= "/posts/" + post.article.toString()%>">
                                                 <img class="card-img-top" src="<%-post.image%>" alt="Card image cap">
                                             </a>
                                             <div class="card-body">
