@@ -24,7 +24,7 @@ posts = [{
         path: 'posts/td_utils_OHLC/td_utils_OHLC.ejs'
     },
     {
-        article: "TD_Auth",
+        article: "td_auth",
         title: 'TD Ameritrade Authorization',
         date:'12/01/2019',
         description: 'How to get a Td Ameritrade authorization token',
