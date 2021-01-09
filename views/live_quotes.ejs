@@ -15,4 +15,227 @@
     </h1>
 </center>
 
+
+<div class="container mx-auto">
+    <p>
+        In the <a href="#">previous post</a> we have used Node.js to set get our authorization tokens and pull historic OHLC
+        data. In this article we are going to switch gears, we want to pull live quotes every 5 minutes , but you can set
+        whatever time you want, from market open to market close and store the data in a database. Because we don’t want to
+        leave our computers on all day, and in later installments we want to automate analysis, we are going to move to the cloud.
+        We will set up an amazon Postgres RDS instance to store data, a lambda function to pull authorization codes utilizing
+        SSM parameter store to store sensitive data, a lambda function to pull quotes and store them to a database, then we
+        will create a step function to do both in sequence and EventBridge events to automate the process and save us some
+        money. The timeframe we will use for this article is 0900-1700 EDT or 1-9 UTC since AWS uses UTC.
+    </p>
+
+    <p>
+        We will start with the easy part, creating a Postgres RDS instance. you can create this however you want using whatever
+        settings you want. Personally I wanted to be able to use pgadmin4 to connect and do analysis on my local machine so
+        I kept public availability on, this also simplifies the lambda functions avoiding having to deal with VPC issues
+        and NAT gateways. We want to store everything we need from the database in ssm parameter store using the following structure:
+    </p>
+    <ul>
+        <li>/DB_NAME/name</li>
+        <li>/DB_NAME/host => this is the connection endpoint</li>
+        <li>/DB_NAME/password</li>
+        <li>/DB_NAME/port</li>
+        <li>/DB_NAME/user</li>
+    </ul>
+
+    <p>
+        This way we can use the getparametersbypath api to pull in everything we need to connect to the database. Make sure to set
+        all parameters as secure strings so they are encrypted with KMS. While we are creating parameters go ahead and  make
+        secure string parameters for your access token, api key, authorization code, and refresh token. (the auth token is
+        likely expired at this point just set it to an old one for the time being).
+    </p>
+
+    <p>
+        This database is going to be on only around 7 hours a day at most 5 days a week, we can save some money, even more than
+        utilizing a 3-year reserved instance, by turning the database on and off. When dealing with AWS times are in UTC time
+        but we want our function to begin around 0900 AM EDT and end around 1700 EDT IE 9-5 in NYC. Here’s a handy UTC time
+        Converter. We want to turn the database on a few minutes before we start gathering data so it has time to get up and
+        running, and a few minutes after we stop gathering data. When we create the EventBridge event we have to register a
+        target so we will create our lambda functions first. Our lambda function needs the correct permissions in order to
+        turn the DB on and off so we need to create an IAM policy to attach to the lambda function authorizing “StopDBInstance”
+        and ‘StartDBInstance” for our database. The policy document will look something like this, be sure to include the ARN of
+        your RDS instance!
+    </p>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=startStopPolicy.json"></script>
+    </div>
+
+    <p>
+        With the correct policy in hand we can create our database on and off Lambda functions. The process for both the start
+        and stop functions is the same. First, Create a lambda function with a python 3.6+ runtime, then click on the permissions
+        tab and click on the  role name link in the execution role box to navigate to the IAM management console for the function
+        click ‘attach policy’ and add the startStopPolicy we just created. Now the function has permission to start and stop your DB.
+        Head back over to the lambda function, here’s the code for the two start and stop functions
+    </p>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=startDB.py"></script>
+    </div>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=stopDB.py"></script>
+    </div>
+
+    <p>
+        Give your functions a quick test to make sure they are functioning as expected. If they are let’s go ahead and automate
+        the process by creating EventBridge events to automatically trigger our functions. We will set the start function to
+        begin turning on the database about 15 minutes before we start collecting data so the database has time to get started
+        and turn it off 5 minutes after we stop collecting data.  The start and stop settings look something like this:
+    </p>
+
+    <center class="mb-4">
+        <img src="/Images/aws_db_chron1.png" width="60%" height="60%">
+    </center>
+
+    <center class="mb-4">
+        <img src="/Images/aws_db_chron2.png" width="60%" height="60%">
+    </center>
+
+    <P>
+        Stick with the default event bus select the correct lambda function for each event, and congratulations we have just automated
+        turning our database on and off and saved us some money! Next, we are going to do a little bit of setup to make future
+        lambda functions a little bit easier. Traditionally you would need to zip your lambda function and all its dependencies
+        together and then upload it, with the introduction of layers we can decouple dependencies, making our project directories
+        more streamlined. We are going to be using two libraries: the requests library to make http requests and psycopg2 library
+        to interact with our database. The first step to creating a layer is to create folder on your local machine (ill call it
+        Requests for now, with a subdirectory named ‘python’. Open a terminal and navigate to the requests directory and run the
+        following commands to install and zip the library.
+    </P>
+
+    <ui>
+        <li>pip install requests -t ./python</li>
+        <li>zip -r requests.zip ./python</li>
+    </ui>
+
+    <p>
+        Now navigate back to AWS Lambda and in the options menu on the left choose ‘Layers’ then click ‘Create Layer” name
+        it requests upload the zip file we just created, choose the appropriate runtime, I recommend python  3.7, because
+        that’s what we will be using for psycopg2. click create layer and now we have abstracted away the requests library.
+        The psycopg2 library is much more difficult to do, you have to compile it on an AWS Linux machine. If you start a
+        new ec2 machine you first need to download the AWS Linux developer tools before you can compile anything, then you
+        need to install pythons pip on the machine, it’s not included out of the box,  and use it to install psycopg2-binary.
+        Then you need to download both Psycopg2 and Postgres unzip them onto the machine and follow the instructions here The
+        setup is really a headache but this zip file can be uploaded straight to lambda layers with a python 3.7 runtime.
+    </p>
+
+    <p>
+        With both layers complete we can begin building our authorization function. First create a new lambda function we will
+        call it ‘authorization’ here. This function is going to need to pull from SSM parameter store, write to parameter store,
+        encrypt, and decrypt using KMS so be sure to go to permissions and make sure your function has policies that allow it do
+        those things. You might have to create some inline policies to give your function the least permissive policy you can.
+        With the correct permissions in place go to the lambda designer and add the requests layer we created earlier.
+        The authorization function is going first pull the refresh token. Api key, and access token, and refresh token from
+        SSM Parameter Store. Then create a function to check whether the token is expired, construct the http request, make the
+        request then update parameters in Parameter store. The entire lambda function looks like this, be sure to set keyId in the
+        lambda function handler to the KMS key you used to encrypt your parameters
+    </p>
+
+    <p>
+        It’s time to pull some quotes! Stay with me because this has a lot going on. Let’s have a look at what kind of table we
+        need to create in our database to store the data, when we pull quotes we are going to get back a giant nested dictionary
+        with top level keys as the ticker and values as another dictionary with the dataname and its values here is what just one
+        of the entries looks like
+    </p>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=oneQuotesEntry.py"></script>
+    </div>
+
+    <P>
+        That’s a lot of fields to create in the table, I’ll save you the headache and give you a python function that can create a
+        table called ‘quotes_table’ where we can store all this data, just change the connection values to the values for your
+        database. The only real change here is the quotes entry labeled 52wkhigh 52wklow which we rename by spelling out fifty
+        two and adding a field for the time of quote.
+    </P>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=createQuotesTable.py"></script>
+    </div>
+
+    <p>
+        We are now all set up to create a lambda function to pull data, the function goes like this, pull database parameters,
+        create functions to reformat the giant nested dictionary and add the reformatted data to the table, then construct the
+        http request, add in the time of quote, pull it and save it. Phew!  In order to do all of this we need to be sure to
+        give our lambda function the correct IAM permissions to do its job. It needs to be able to pull from parameter store
+        decrypt parameters using KMS, and write to the database. Be sure to add the correct inline policies to your function!!!
+        Let’s break each part down into more digestible chunks. Pulling database parameters and connecting isn’t too complicated,
+        it looks something like this
+    </p>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=databaseStuff.py"></script>
+    </div>
+
+    <p>
+        Now things get a little tricky, we can’t just input a giant nested dictionary into our relational database so we need
+        to reformat it into a more usable structure. The returned quotes don’t have any time of quote information in them so
+        the function we create needs to add it. Let’s create a function that takes the nested dictionary, breaks it down into
+        a quote for a single ticker, renames things with integer keys, adds time, then adds each tickers quotes to a list.
+    </p>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=createUpdateDictionaryList.py"></script>
+    </div>
+
+    <p>
+        Next need a function to add each quote to our table, the function takes as input a single tickers quote.
+    </p>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=addQuotesToTable.py"></script>
+    </div>
+
+    <p>
+        So we can reformat quotes and add them to the dictionary, but first we have to get them! The structure of the getquotes api is
+        as follows
+    </p>
+
+    <center class="mb-4">
+        <img src="/Images/td_get_quote.png" width="60%" height="60%">
+    </center>
+
+    <p>
+        Say we wanted to grab quotes for AAPL, MSFT, and GOOG the symbol query string parameter would look like this: ‘AAPL,MSFT,GOOG’,
+        I’ll leave it up to you to decide how you want to create this potentially very long string. At long last here’s the entire
+        Lambda function!
+    </p>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=getQuotes.py"></script>
+    </div>
+
+    <p>
+        Notice that we pull our access token and api key values from parameter store inside the lambda function handler.
+        Lambda has what’s called an execution context, a temporary runtime environment  that is maintained between function
+        calls in anticipation of another execution. If you pull in the access token outside the function handler it is
+        possible the token is expired but you don’t pull a new one because it’s already stored in the execution context,
+        for the same reason we set the time inside the function handler. The database parameters on the other hand are fixed,
+        so it makes sense to initiate database connections and static parameters outside of the function handler.
+        The final step is to create an AWS step function. AWS describes step functions as follows:
+    </p>
+
+    <blockquote cite="https://aws.amazon.com/step-functions/?step-functions.sort-by=item.additionalFields.postDateTime&step-functions.sort-order=desc">
+        AWS Step Functions lets you coordinate multiple AWS services into serverless workflows so you can build and update apps quickly.
+        Using Step Functions, you can design and run workflows that stitch together services, such as AWS Lambda, A getQuotes.py
+        WS Fargate, and Amazon SageMaker, into feature-rich applications. Workflows are made up of a series of steps, with the output
+        of one step acting as input into the next. Application development is simpler and more intuitive using Step Functions, because
+        it translates your workflow into a state machine diagram that is easy to understand, easy to explain to others, and easy to change.
+    </blockquote>
+
+    <p>
+        Creating the step function is pretty straightforward, in the AWS console head to step functions, click ‘create state machine’ choose
+        ‘express’ then past the following to create the step function
+    </p>
+
+    <div class="container mx-auto mb-4">
+        <script src="https://gist.github.com/brandonsimpson21/048837cf88c8c1c437fde1561fdabcd5.js?file=stateMachine.json"></script>
+    </div>
+
+</div>
+
 </body>
