@@ -1,11 +1,10 @@
 posts = [{
     article: "evolutionary_agents",
     title: 'Evolutionary Agents',
-    date: '01/01/2020',
-    description: 'Evolutionary agent decision-making model',
+    date: '01/04/2020',
+    description: 'Evolutionary Agent Decision-Making Model',
     image: 'Images/EAS.png',
     path: 'posts/evolutionary_agents/evolutionary_agents.ejs'
-
     },
     {
         article: "live_quotes",
