@@ -1,6 +1,5 @@
 const express = require('express')
 require('dotenv').config()
-const mongoose = require('mongoose')
 const path = require('path')
 const posts = require('./routes/posts')
 const indexRouter = require('./routes/index')
