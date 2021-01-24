@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const fs = require('fs')
 
-const posts = require('../posts/posts_list') //TODO put posts in database
+const posts = require('../posts/posts_list')
 
 
 router.get('/', (req, res) => {
